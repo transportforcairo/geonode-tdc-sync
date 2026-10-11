@@ -1,0 +1,123 @@
+# geonode-tdc-sync configuration
+# Token: create one at https://ckan.transport-data.org/user/<your-username>/api-tokens
+# Prefer the env var TDC_API_TOKEN over putting it here. Never commit this file with a token.
+# tdc_api_token: ""
+
+# Transport for Cairo's live configuration — also the worked example for this repo.
+# For your own portal, start from config.example.yaml instead.
+
+geonode_url: https://data.transportforcairo.com
+tdc_url: https://ckan.transport-data.org
+tdc_org: tfc                         # TDC organisation slug the records belong to
+portal_name: TfC data portal         # used in resource names and the "sources" field
+name_prefix: "tfc-"                  # prefix for auto-generated TDC record names
+
+# Optional GeoNode login (only needed for unpublished/private resources)
+# geonode_user: ""
+# geonode_password: ""
+
+# Which GeoNode resources to mirror. Each entry is a django-rest-framework-filters
+# query on /api/v2/resources.
+select:
+  # Whole catalogue: 43 data records today (38 datasets + 5 GTFS documents).
+  # The 8 geostories/dashboards/maps are filtered out by resource type regardless.
+  - resource_type: dataset
+  - resource_type: document
+  #
+  # Long-term alternative: create a keyword "tdc" on GeoNode, tag what should be
+  # mirrored, and use just the filter below — then publishing to TDC becomes a
+  # checkbox on the TfC portal and nobody needs to edit this file.
+  # - keywords.slug: tdc
+
+# GeoNode pks to never mirror
+exclude: []
+
+# GeoNode's is_published flag is a publishing-workflow artifact here and reads false
+# on records that are in fact public (confirmed 15 Sep 2026), so it is not used as a
+# gate. is_approved is still respected.
+require_published: false
+
+# Geostories, dashboards and maps are GeoNode app objects with no downloadable file.
+# Keep false: they are not mirrored to TDC at all.
+mirror_apps: false
+
+# GeoNode licence identifier -> TDC license_id (see /api/3/action/license_list on TDC)
+license_map:
+  "CC-BY-4.0": CC-BY-4.0
+  "CC-BY-SA-4.0": CC-BY-SA-4.0
+  "ODbL": ODC-ODbL-1.0
+
+# Fallbacks when nothing else supplies a value.
+# Almost every TfC record has a blank or "not_specified" licence on GeoNode, so
+# license_id below is what most records will get — CC-BY-4.0, confirmed 15 Sep 2026.
+defaults:
+  tdc_category: community          # public | community | tdc_formatted | tdc_harmonized
+  license_id: CC-BY-4.0
+  topics: [public-transportation]
+  sectors: [road]
+  modes: [bus]
+  services: [passenger]
+  frequency: not_planned
+  data_provider: "Transport for Cairo (TfC)"
+  data_access: "Publicly available"
+  private: false                   # true = keep unlisted on TDC until reviewed
+
+# Keyword-driven vocabularies, so 43 records don't all land with identical metadata.
+# A rule fires when any of its `keywords` matches a GeoNode keyword slug, or any
+# `title_contains` string appears in the title/abstract. Matches are unioned.
+# Valid values (from TDC's live facets):
+#   topics:   active-mobility aviation energy environment gender logistics pipeline
+#             policy public-transportation rail social transport-emissions vehicles
+#             water-transportation
+#   sectors:  all active-mobility road rail water aviation pipeline
+#   modes:    all walking cycling two-three-wheelers cars private-cars taxis truck bus
+#             heavy-rail high-speed-rail transit-rail coastal-shipping inland-shipping
+#             international-maritime domestic-aviation international-aviation pipeline
+#   services: passenger freight
+keyword_rules:
+  - keywords: [public-transport, popular-transport, routes, stops, terminals, gtfs]
+    topics: [public-transportation]
+    sectors: [road]
+    modes: [bus, taxis]
+    services: [passenger]
+  - keywords: [metro, rail, railway, high-speed-rail_1, monorail]
+    topics: [rail, public-transportation]
+    sectors: [rail]
+    modes: [transit-rail, heavy-rail]
+    services: [passenger]
+  - keywords: [freight, dry-port, land-port, port, logistical, industrial]
+    topics: [logistics]
+    sectors: [rail, road]
+    services: [freight]
+    modes: [truck, heavy-rail]
+  - keywords: [ghg-emissions]
+    topics: [transport-emissions, environment]
+  - keywords: [population, employment, jobs, socioeconomics, land-use, urban-planning]
+    topics: [social, policy]
+  - keywords: [electric]
+    topics: [vehicles, environment]
+    modes: [cars]
+  - title_contains: ["origin", "passenger flow", "boarding"]
+    topics: [public-transportation, social]
+
+# Per-resource overrides keyed by GeoNode pk (any package field above)
+overrides:
+  "189":                           # [Accra] Trotro and Shared Taxi GTFS Feed
+    name: gumap-accra-gtfs
+    tag_string_extra: GTFS
+    temporal_coverage_start: "2020-09-01"
+    temporal_coverage_end: "2022-04-01"
+  "188":
+    name: gumap-accra-route-legs
+  "187":
+    name: gumap-accra-onboard-survey-trips
+  "186":                           # no region set on GeoNode -> supply it here
+    name: gumap-accra-onboard-survey-stop-events
+    geographies: [gha]
+    regions: [afr]
+  "185":                           # no region set on GeoNode -> supply it here
+    name: gumap-accra-stops
+    geographies: [gha]
+    regions: [afr]
+  "184":
+    name: gumap-accra-terminals

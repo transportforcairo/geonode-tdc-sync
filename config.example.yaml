@@ -1,0 +1,66 @@
+# geonode-tdc-sync — configuration template
+# Copy to e.g. my_portal.yaml, fill in, then:
+#   python geonode_tdc_sync.py --config my_portal.yaml --dry-run
+#
+# API token: create one at https://ckan.transport-data.org/user/<your-username>/api-tokens
+# and pass it as the environment variable TDC_API_TOKEN. Do not put it in this file.
+
+geonode_url: https://geonode.example.org     # your GeoNode 4.x portal
+tdc_url: https://ckan.transport-data.org
+tdc_org: your-org                            # your organisation slug on TDC
+portal_name: Example data portal
+name_prefix: "your-org-"
+
+# Optional GeoNode login (only for unpublished/private resources)
+# geonode_user: ""
+# geonode_password: ""
+
+# What to mirror: django-rest-framework-filters queries on GeoNode /api/v2/resources.
+# Results of all entries are unioned.
+select:
+  - keywords.slug: tdc          # recommended: tag records with keyword "tdc" on GeoNode
+  # - resource_type: dataset    # or mirror everything
+  # - resource_type: document
+
+exclude: []                     # GeoNode pks never to mirror
+require_published: true         # skip records with is_published=false on GeoNode
+mirror_apps: false              # geostories/dashboards/maps as URL-only records
+
+# GeoNode licence identifier -> TDC license_id (see /api/3/action/license_list on TDC)
+license_map:
+  "CC-BY-4.0": CC-BY-4.0
+  "CC-BY-SA-4.0": CC-BY-SA-4.0
+  "ODbL": ODC-ODbL-1.0
+
+# Fallbacks when nothing else supplies a value. Choose license_id deliberately:
+# it is applied to every record whose GeoNode licence is blank or unmapped.
+defaults:
+  tdc_category: community       # public | community | tdc_formatted | tdc_harmonized
+  license_id: CC-BY-4.0
+  topics: [public-transportation]
+  sectors: [road]
+  modes: [bus]
+  services: [passenger]
+  frequency: not_planned
+  data_provider: "Your Organisation"
+  data_access: "Publicly available"
+  private: true                 # start unlisted; flip to false once you've reviewed on TDC
+  # geographies: [egy]          # fallback ISO3 (lower-case) when GeoNode has no country region
+
+# Map GeoNode keyword slugs (or title/abstract words) onto TDC's controlled vocabularies.
+# Valid values: /api/3/action/scheming_dataset_schema_show?type=dataset on TDC.
+keyword_rules:
+  - keywords: [gtfs, public-transport, routes, stops]
+    topics: [public-transportation]
+    modes: [bus]
+  - keywords: [rail, metro]
+    topics: [rail]
+    sectors: [rail]
+    modes: [transit-rail]
+
+# Per-record overrides keyed by GeoNode pk (any package field)
+overrides: {}
+#  "123":
+#    name: my-city-gtfs
+#    geographies: [gha]
+#    regions: [afr]

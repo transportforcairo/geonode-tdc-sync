@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.log
+# Local configs that may carry a token or GeoNode password
+*.local.yaml
+secrets.yaml
